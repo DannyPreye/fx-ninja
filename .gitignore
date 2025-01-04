@@ -1,0 +1,5 @@
+
+.codegpt
+.env
+node_modules
+dist
