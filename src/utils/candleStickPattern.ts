@@ -207,3 +207,50 @@ export function technicallyAnalyze(quotes: any[])
         pivotPoints
     };
 }
+
+export function summarizePatterns(patterns: any[])
+{
+    // Count pattern frequencies
+    const patternCount = patterns.reduce((acc, { pattern }) =>
+    {
+        acc[ pattern ] = (acc[ pattern ] || 0) + 1;
+        return acc;
+    }, {});
+
+    // Get dominant trend
+    const bullishPatterns = [ 'Bullish Engulfing', 'Morning Star', 'Three White Soldiers', 'Bullish Harami', 'Hammer' ];
+    const bearishPatterns = [ 'Bearish Engulfing', 'Evening Star', 'Three Black Crows', 'Bearish Harami' ];
+
+    let bullishCount = 0;
+    let bearishCount = 0;
+
+    Object.entries(patternCount).forEach(([ pattern, count ]) =>
+    {
+        if (bullishPatterns.includes(pattern)) bullishCount += count as number;
+        if (bearishPatterns.includes(pattern)) bearishCount += count as number;
+    });
+
+    return {
+        dominantTrend: bullishCount > bearishCount ? 'bullish' : 'bearish',
+        strengthRatio: Math.max(bullishCount, bearishCount) / (bullishCount + bearishCount),
+        mostFrequentPatterns: Object.entries(patternCount)
+            .sort(([ , a ], [ , b ]) => (b as number) - (a as number))
+            .slice(0, 3)
+    };
+}
+
+export function summarizeIndicators(indicators: any)
+{
+    return {
+        trendIndicators: {
+            sma50_200_crossover: indicators.sma50[ indicators.sma50.length - 1 ] > indicators.sma200[ indicators.sma200.length - 1 ],
+            rsi: indicators.rsi[ indicators.rsi.length - 1 ],
+            macdSignal: indicators.macd.macdLine[ indicators.macd.macdLine.length - 1 ] > indicators.macd.signalLine[ indicators.macd.signalLine.length - 1 ]
+        },
+        volumeProfile: indicators.obv[ indicators.obv.length - 1 ] - indicators.obv[ indicators.obv.length - 10 ],
+        recentPriceAction: {
+            lastClose: indicators.recentCloses[ indicators.recentCloses.length - 1 ],
+            priceChange: ((indicators.recentCloses[ indicators.recentCloses.length - 1 ] / indicators.recentCloses[ 0 ]) - 1) * 100
+        }
+    };
+}

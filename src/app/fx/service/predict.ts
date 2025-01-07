@@ -2,8 +2,9 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { basicConfig } from "../../../config/configs";
 import yahooFinance from 'yahoo-finance2';
 import moment from "moment";
-import { calculateIndicators, candleStickPatternsIdentifier, technicallyAnalyze } from "../../../utils/candleStickPattern";
+import { calculateIndicators, candleStickPatternsIdentifier, summarizeIndicators, summarizePatterns, technicallyAnalyze } from "../../../utils/candleStickPattern";
 import { Quote } from "yahoo-finance2/dist/esm/src/modules/quote";
+import { ForexNews } from "./scraper";
 
 
 export class PredictService
@@ -62,7 +63,7 @@ export class PredictService
             data: await this.getHistoricalData(symbol, timeFrame)
         })));
 
-        console.log("This is the data", JSON.stringify(data));
+
         return {
             daily: data.find((d) => d.timeFrame === '1d')?.data.quotes,
             weekly: data.find((d) => d.timeFrame === '1wk')?.data.quotes,
@@ -71,7 +72,7 @@ export class PredictService
 
     }
 
-    private async predict(multipleTimeFrameData: any)
+    private async analyze(multipleTimeFrameData: any)
     {
 
         const dailyData = multipleTimeFrameData.daily;
@@ -96,14 +97,44 @@ export class PredictService
         };
     }
 
+    private async getFundamentals(currencyPair: string)
+    {
+        const news = new ForexNews();
+
+        return await news.getFundamentals(currencyPair);
+    }
     public async predictStock(symbol: string,)
     {
         const multipleTimeFrameData = await this.getMultiTimeFrameData(symbol);
-        const prediction = await this.predict(multipleTimeFrameData);
+        // const prediction = await this.predict(multipleTimeFrameData);
+        const rawAnalysis = await this.analyze(multipleTimeFrameData);
 
-        // console.log("this ithe te prediction", prediction);
 
-        return prediction;
+
+        const summary = {
+            daily: {
+                patterns: summarizePatterns(rawAnalysis.dailyPatterns.patterns),
+                indicators: summarizeIndicators(rawAnalysis.dailyPatterns.indicators),
+                keyLevels: {
+                    fibonacci: Object.values(rawAnalysis.dailyPatterns.fibonacciLevels).slice(0, 3),
+                    pivots: Object.values(rawAnalysis.dailyPatterns.pivotPoints).slice(0, 3)
+                },
+                news: await this.getFundamentals(symbol)
+
+            },
+            weekly: {
+                patterns: summarizePatterns(rawAnalysis.weeklyPatterns.patterns),
+                indicators: summarizeIndicators(rawAnalysis.weeklyPatterns.indicators)
+            },
+            monthly: {
+                patterns: summarizePatterns(rawAnalysis.monthlyPatterns.patterns),
+                indicators: summarizeIndicators(rawAnalysis.monthlyPatterns.indicators)
+            }
+        };
+
+
+
+        return summary;
     }
 
 }
